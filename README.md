@@ -1,3 +1,5 @@
+![Dragon Quest 25th Anniversary Collection](assets/NewLogo.png)
+
 # Dragon Quest 25th Anniversary Collection: English Translation for Wii
 
 An English translation of the Japanese Nintendo Wii collection, assembled by **TopCatHack (2026)**. It integrates existing fan translations of all five included game releases and translates the surrounding collection interface.
@@ -153,7 +155,17 @@ These identify the release downloads, not the source or reconstructed ISO.
 
 ## Screenshots
 
-Screenshots from the v0.95 beta will be added here as they are supplied.
+| Title screen | Extras menu | Game information |
+| --- | --- | --- |
+| ![Title screen](screenshots/01.png) | ![Extras menu](screenshots/02.png) | ![Game information](screenshots/03.png) |
+
+| Vintage extras | Development notes | Bonus video |
+| --- | --- | --- |
+| ![Vintage extras](screenshots/04.png) | ![Development notes](screenshots/05.png) | ![Bonus video](screenshots/06.png) |
+
+| Game selection | Adventure Log and suspend menu |
+| --- | --- |
+| ![Game selection](screenshots/07.png) | ![Adventure Log and suspend menu](screenshots/08.png) |
 
 ## Reporting problems
 
