@@ -9,7 +9,7 @@ import tempfile
 
 ISO_SIZE = 4699979776
 SOURCE_SHA256 = "35f1f53687c4976fb80ca087133dcbaae426bf4fad1f5163426f7e890454876c"
-OUTPUT_SHA256 = "44027eec9ebd2ad6b421dbf30406991e03da3f5d480462442e8b6dc6554a6ea2"
+PATCH_SHA256 = "10092bad614eb40382d14f0b8fb378489ab1e6fa58207c86b4722169e5d254f0"
 
 
 def digest(path):
@@ -33,6 +33,7 @@ def main():
     parser.add_argument("patch", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--xdelta-bin", default="xdelta3")
+    parser.add_argument("--expected-output-sha256", help="Optional independently confirmed output hash")
     args = parser.parse_args()
     try:
         source, patch, output = (p.resolve() for p in (args.source, args.patch, args.output))
@@ -47,6 +48,9 @@ def main():
             raise ValueError("xdelta3 was not found; use --xdelta-bin to specify it")
         print("Checking original ISO...", flush=True)
         verify(source, SOURCE_SHA256)
+        print("Checking v0.95 patch...", flush=True)
+        if digest(patch) != PATCH_SHA256:
+            raise ValueError("Patch SHA-256 does not match the uploaded v0.95 release asset")
         # Reconstruction and final copy can coexist, requiring two ISO sizes.
         if shutil.disk_usage(output.parent).free < 2 * ISO_SIZE + 64 * 1024 * 1024:
             raise ValueError("Allow about 9.5 GB of free space in the output directory")
@@ -55,7 +59,11 @@ def main():
             print("Applying xdelta...", flush=True)
             subprocess.run([executable, "-d", "-s", str(source), str(patch), str(candidate)], check=True)
             print("Checking reconstructed ISO...", flush=True)
-            verify(candidate, OUTPUT_SHA256)
+            if candidate.stat().st_size != ISO_SIZE:
+                raise ValueError("Reconstructed ISO has an unexpected size")
+            output_sha256 = digest(candidate)
+            if args.expected_output_sha256 and output_sha256 != args.expected_output_sha256.lower():
+                raise ValueError("Reconstructed ISO does not match the supplied output hash")
             # Exclusive creation also protects a file created during patching.
             destination = output.open("xb")
             try:
@@ -64,7 +72,8 @@ def main():
             except BaseException:
                 output.unlink(missing_ok=True)
                 raise
-        print(f"Verified English ISO: {output}")
+        print(f"Reconstructed English ISO: {output}")
+        print(f"SHA-256: {output_sha256}")
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"Error: {error}\n")
 

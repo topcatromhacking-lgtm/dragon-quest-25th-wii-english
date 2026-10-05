@@ -1,12 +1,12 @@
 # Riivolution conversion
 
-Status: preparation, pending the current xdelta and a comparison of the reconstructed game files. This document describes the intended workflow, not a tested patch.
+Status: v0.95 xdelta uploaded; comparison and runtime testing still pending. A local experimental converter is available in `scripts/build_riivolution.py`. This document describes the intended workflow, not a tested patch.
 
 ## Local reconstruction
 
 Apply the release xdelta to the matching original ISO with `scripts/apply_xdelta.py`. Extract the original and reconstructed game partitions locally, preserving their internal paths. Compare file hashes to identify changed and added files. Disc header and partition metadata changes must be assessed separately from ordinary game files.
 
-The source metadata below comes from the existing release draft. It must be reconciled with the uploaded xdelta before release:
+The source metadata below comes from the existing release draft. The original source hash is used by the patcher. The older draft's output hash has not been confirmed for v0.95:
 
 | Image | Size in bytes | SHA-256 |
 | --- | ---: | --- |
@@ -19,7 +19,7 @@ Read the disc ID, revision and disc number from the source image. Do not substit
 
 Riivolution uses an XML in `/riivolution/` to match a disc, expose selectable options and map external files to disc paths. File replacements can change file size. The generated package should use explicit mappings for each changed file so every replacement can be reviewed.
 
-The planned layout is `/riivolution/DQCollectionEnglish.xml` alongside `/dq25-english/files/`, with original internal paths preserved under the latter. The XML will contain the confirmed disc identity and one English translation option. This layout is a proposal; no functional XML is committed until the mappings are known.
+The planned layout is `/riivolution/DQCollectionEnglish.xml` alongside `/dq25-english/files/`, with original internal paths preserved under the latter. The converter reads the original disc identity and generates one English option with explicit file mappings. Generated XML and replacement files stay local and are excluded from the source repository.
 
 Collection resources, emulator executables, embedded game payloads, startup notices and HOME resources must be accounted for together. Executables stored as ordinary disc files and loaded later may be candidates for file replacement, but their launch behavior must be tested. Changes to the initial main DOL require separate investigation and may need memory patches. An ISO's translated disc header does not automatically become a runtime Riivolution change.
 
@@ -36,3 +36,11 @@ Test real Wii Riivolution separately, especially the transitions into the embedd
 ## Release packaging
 
 Keep the original ISO, reconstructed ISO and extracted ROMs local. Attach the xdelta, verified metadata and reconstruction tools to a release. A local generator can produce the Riivolution replacement files from that reconstruction. Publish a direct replacement-file package only after its contents and distribution approach have been reviewed.
+
+## v0.95 release input
+
+Patch asset: `Dragon.Quest.I-II-III.25th.Anniversary.Collection.v0.95.ENG-TopCatHack.xdelta`.
+
+Size: 849667870 bytes. SHA-256 from GitHub release metadata: `10092bad614eb40382d14f0b8fb378489ab1e6fa58207c86b4722169e5d254f0`. This identifies the uploaded patch; it is not a playback validation or a reconstructed-ISO hash.
+
+The converter supports changed and added ordinary files. File deletion, a changed main DOL, apploader or other unsupported system changes block XML generation and are listed in `build-report.json`. Disc-title and physical DOL/FST offset changes are documented as ISO metadata. It preserves save behavior without adding save redirection.

@@ -20,7 +20,7 @@ The underlying game translations belong to their respective authors. This projec
 
 The development builds have been reported working across all five games, including SRAM saving/loading, controller warnings and HOME menu behavior. Release reconstruction and Riivolution compatibility need separate testing.
 
-**The Riivolution package is in preparation. There is no ready-to-use Riivolution release yet.** The current repository contains documentation and a local xdelta reconstruction tool. The translation patch will be attached to a release rather than committed to the source tree.
+**The Riivolution package is in preparation. There is no ready-to-use Riivolution release yet.** The current repository contains documentation and a local xdelta reconstruction tool. The [v0.95 beta xdelta](https://github.com/topcatromhacking-lgtm/dragon-quest-25th-wii-english/releases/tag/v0.95) is available as a pre-release asset. The local converter can generate an experimental Riivolution package or a report identifying changes that need separate handling.
 
 The interface work described in the release draft includes collection menus, emulator notices, HOME menus, extras labels, English collection logos, translation credits and subtitles for the Dragon Quest X bonus video. Original archived artwork, manuals, maps and packaging remain Japanese. The final package's coverage will be confirmed against its actual files.
 
@@ -34,7 +34,15 @@ The documented ISO build can be reconstructed with Python 3.9 or newer and [xdel
 python scripts/apply_xdelta.py "original.iso" "translation.xdelta" "DQ_Collection_English.iso"
 ```
 
-Install xdelta3 on PATH, or add `--xdelta-bin "C:\path\to\xdelta3.exe"`. The script checks the source and reconstructed ISO against the hashes recorded in the existing release draft. A different build needs its verified metadata updated first. The script preserves the source and refuses to overwrite an existing output.
+Install xdelta3 on PATH, or add `--xdelta-bin "C:\path\to\xdelta3.exe"`. The script checks the original ISO against the documented source hash and the xdelta against GitHub's v0.95 asset digest. It prints the reconstructed ISO hash; an independently confirmed output hash can also be supplied with `--expected-output-sha256`. The old release-draft output hash is not assumed to describe v0.95. The script preserves the source and refuses to overwrite an existing output.
+
+To generate the experimental Riivolution package from your original and patched ISO, install [Wiimms ISO Tools](https://wit.wiimm.de/) and run:
+
+```text
+python scripts/build_riivolution.py "original.iso" "DQ_Collection_English.iso" "build/riivolution-v0.95"
+```
+
+Use `--wit-bin "C:\path\to\wit.exe"` if wit is not on PATH. Extracted data-partition directories are also accepted. Keep enough disk space for both extracted data partitions and the replacement files. Send `build-report.json` for review. If unsupported system changes are found, the converter produces the report and withholds the launchable XML. A generated package still needs Dolphin and real Wii testing.
 
 See [the Riivolution build plan](docs/RIIVOLUTION.md) for the remaining conversion and compatibility work. The rebuilt ISO is an intermediate local file, not a repository download.
 
