@@ -1,6 +1,6 @@
 # Riivolution conversion
 
-Status: v0.95 xdelta uploaded; comparison and runtime testing still pending. A local experimental converter is available in `scripts/build_riivolution.py`. This document describes the intended workflow, not a tested patch.
+Status: v0.95 xdelta uploaded; conversion completed and Dolphin playback reported working; real Wii testing still pending. A local experimental converter is available in `scripts/build_riivolution.py`. This document describes the intended workflow, not a tested patch.
 
 ## Local reconstruction
 
@@ -54,3 +54,7 @@ Both reviewed SNES emulator executables now contain `/%s.rom` and `/%s.pcm` inst
 The report lists 141 changed game-file entries: four obsolete assets can be retained and 137 entries need file mappings. The five replacement emulator DOLs are ordinary game-file mappings. The initial collection DOL uses the seven memory writes.
 
 Local verification applied the seven writes to the actual original main DOL and compared the complete result with the actual translated main DOL. Package tests combined those actual executables with small asset fixtures to check retained assets and XML generation. Changed-header and unreviewed-deletion cases were also checked. The full replacement assets remain on the user's computer; the full generated package and runtime behavior are not yet verified.
+
+## User-reported Dolphin result
+
+On 2026-10-05 the tester reported all working after generating the package and running it in Dolphin, including the saved JSON preset. The exact Dolphin version has not been recorded. Real Wii playback remains untested. Structural verification described above is separate from this user gameplay report.
