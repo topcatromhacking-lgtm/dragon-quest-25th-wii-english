@@ -1,0 +1,31 @@
+name: Bug report
+description: Report a problem with the translation or collection
+title: "[Bug] "
+body:
+  - type: input
+    id: build
+    attributes:
+      label: Patch version or build
+      description: Include whether you used an ISO patch or Riivolution.
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Console or emulator
+      description: Include the Dolphin version, or console model and loader.
+    validations:
+      required: true
+  - type: input
+    id: location
+    attributes:
+      label: Affected game or collection screen
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: What happened and how to reproduce it
+      description: Explain what you expected and what happened. Mention fresh launch, SRAM load or suspend-state resume. Attach screenshots if available.
+    validations:
+      required: true
