@@ -42,7 +42,7 @@ To generate the experimental Riivolution package from your original and patched 
 python scripts/build_riivolution.py "original.iso" "DQ_Collection_English.iso" "build/riivolution-v0.95"
 ```
 
-Use `--wit-bin "C:\path\to\wit.exe"` if wit is not on PATH. Extracted data-partition directories are also accepted. Keep enough disk space for both extracted data partitions and the replacement files. Send `build-report.json` for review. If unsupported system changes are found, the converter produces the report and withholds the launchable XML. A generated package still needs Dolphin and real Wii testing.
+Use `--wit-bin "C:\path\to\wit.exe"` if wit is not on PATH. Extracted data-partition directories are also accepted. Keep enough disk space for both extracted data partitions and the replacement files. Send `build-report.json` for review. The updated converter handles the reviewed v0.95 main-DOL memory changes and retains the four obsolete compressed SNES assets. If other unsupported changes are found, it produces the report and withholds the launchable XML. Choose a new output folder if a previous report already occupies the old one. A generated package still needs Dolphin and real Wii testing.
 
 See [the Riivolution build plan](docs/RIIVOLUTION.md) for the remaining conversion and compatibility work. The rebuilt ISO is an intermediate local file, not a repository download.
 

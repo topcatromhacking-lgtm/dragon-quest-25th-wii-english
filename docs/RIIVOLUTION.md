@@ -21,7 +21,7 @@ Riivolution uses an XML in `/riivolution/` to match a disc, expose selectable op
 
 The planned layout is `/riivolution/DQCollectionEnglish.xml` alongside `/dq25-english/files/`, with original internal paths preserved under the latter. The converter reads the original disc identity and generates one English option with explicit file mappings. Generated XML and replacement files stay local and are excluded from the source repository.
 
-Collection resources, emulator executables, embedded game payloads, startup notices and HOME resources must be accounted for together. Executables stored as ordinary disc files and loaded later may be candidates for file replacement, but their launch behavior must be tested. Changes to the initial main DOL require separate investigation and may need memory patches. An ISO's translated disc header does not automatically become a runtime Riivolution change.
+Collection resources, emulator executables, embedded game payloads, startup notices and HOME resources must be accounted for together. Executables stored as ordinary disc files and loaded later may be candidates for file replacement, but their launch behavior must be tested. For an initial main DOL with an unchanged loading header and size, the converter maps loaded-section differences into checked memory writes. It verifies that these writes reconstruct the translated executable exactly. Header, layout or non-loaded-byte changes remain blocked. An ISO's translated disc header does not automatically become a runtime Riivolution change.
 
 No save redirection is planned by default. Preserve and test the collection's established save behavior.
 
@@ -43,4 +43,14 @@ Patch asset: `Dragon.Quest.I-II-III.25th.Anniversary.Collection.v0.95.ENG-TopCat
 
 Size: 849667870 bytes. SHA-256 from GitHub release metadata: `10092bad614eb40382d14f0b8fb378489ab1e6fa58207c86b4722169e5d254f0`. This identifies the uploaded patch; it is not a playback validation or a reconstructed-ISO hash.
 
-The converter supports changed and added ordinary files. File deletion, a changed main DOL, apploader or other unsupported system changes block XML generation and are listed in `build-report.json`. Disc-title and physical DOL/FST offset changes are documented as ISO metadata. It preserves save behavior without adding save redirection.
+The converter supports changed and added ordinary files. Unreviewed file deletions, unsupported main-DOL changes, apploader or other unsupported system changes block XML generation and are listed in `build-report.json`. Disc-title and physical DOL/FST offset changes are documented as ISO metadata. It preserves save behavior without adding save redirection.
+
+## Executable review of v0.95
+
+The uploaded diagnostic executables match the main-DOL hashes in the build report. The collection disc ID is `S25JGD`, disc 0, revision 0. The main DOL has an identical loading header and length, with 738 changed bytes. Seven generated memory writes, including original-byte checks, reproduce the translated executable byte for byte. This is a structural check, not a runtime test.
+
+Both reviewed SNES emulator executables now contain `/%s.rom` and `/%s.pcm` instead of the original `/LZH8%s.rom` and `/LZH8%s.pcm` filename formats. Their replacement ROM/audio files are added under the new names. The four obsolete compressed assets remain on the original disc, with no mapping applied. This exception requires the exact reviewed translated emulator hashes and the corresponding new files; arbitrary deletions remain blocked. Normal playback must still confirm that these legacy assets are unused.
+
+The report lists 141 changed game-file entries: four obsolete assets can be retained and 137 entries need file mappings. The five replacement emulator DOLs are ordinary game-file mappings. The initial collection DOL uses the seven memory writes.
+
+Local verification applied the seven writes to the actual original main DOL and compared the complete result with the actual translated main DOL. Package tests combined those actual executables with small asset fixtures to check retained assets and XML generation. Changed-header and unreviewed-deletion cases were also checked. The full replacement assets remain on the user's computer; the full generated package and runtime behavior are not yet verified.

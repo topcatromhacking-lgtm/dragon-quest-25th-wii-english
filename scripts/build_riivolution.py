@@ -11,6 +11,68 @@ import tempfile
 import xml.etree.ElementTree as ET
 
 
+def dol_memory_patches(before, after):
+    """Map same-layout DOL differences to checked runtime writes."""
+    if len(before) < 256 or len(before) != len(after) or before[:256] != after[:256]:
+        raise ValueError('Main DOL size or loading header changed; requires separate handling')
+    covered = bytearray(len(before))
+    address_ranges = []
+    patches = []
+    for index in range(18):
+        word = lambda at: int.from_bytes(before[at:at + 4], 'big')
+        offset, address, size = word(index * 4), word(0x48 + index * 4), word(0x90 + index * 4)
+        if not size:
+            continue
+        if offset < 256 or offset + size > len(before) or any(covered[offset:offset + size]):
+            raise ValueError('Invalid or overlapping DOL file sections')
+        if not ((0x80000000 <= address and address + size <= 0x81800000)
+                or (0x90000000 <= address and address + size <= 0x94000000)):
+            raise ValueError('DOL section is outside supported Wii RAM ranges')
+        if any(address < end and start < address + size for start, end in address_ranges):
+            raise ValueError('Overlapping DOL memory sections')
+        address_ranges.append((address, address + size))
+        covered[offset:offset + size] = b'\x01' * size
+        # Preserve complete words around changed instruction/data bytes.
+        changed_words = [n for n in range(0, size, 4)
+                         if before[offset + n:offset + min(n + 4, size)]
+                         != after[offset + n:offset + min(n + 4, size)]]
+        ranges = []
+        for n in changed_words:
+            if ranges and n == ranges[-1][1] and n + 4 - ranges[-1][0] <= 256:
+                ranges[-1][1] = min(n + 4, size)
+            else:
+                ranges.append([n, min(n + 4, size)])
+        for start, end in ranges:
+            patches.append({'offset': f'0x{address + start:08X}',
+                            'original': before[offset + start:offset + end].hex().upper(),
+                            'value': after[offset + start:offset + end].hex().upper(),
+                            'file_offset': offset + start})
+    if any(a != b and not covered[i] for i, (a, b) in enumerate(zip(before, after))):
+        raise ValueError('Main DOL has differences outside loaded sections')
+    reconstructed = bytearray(before)
+    for patch in patches:
+        start = patch['file_offset']; data = bytes.fromhex(patch['value'])
+        reconstructed[start:start + len(data)] = data
+    if reconstructed != after:
+        raise ValueError('Generated main-DOL patches do not reconstruct the translated executable')
+    return patches
+
+
+def reviewed_snes_removal(name, new, translated):
+    """Keep only the four reviewed obsolete compressed assets on the source disc."""
+    match = re.fullmatch(r'(ZKCJ|ZKDJ)/content5/LZH8(ZKCJ|ZKDJ)\.(rom|pcm)', name)
+    if not match or match[1] != match[2]:
+        return False
+    title, extension = match[1], match[3]
+    replacement = f'{title}/content5/{title}.{extension}'
+    reviewed = {'ZKCJ': 'ac33a8dd998f49086efdc0d177ed7abfe788fd14b58ea93ba0ec34c56b226a2f', 'ZKDJ': 'ef94f5188074f6e7655c77c2eb61f7f497ff846b4d2a09424cd7e6adad268c38'}
+    executable = translated / 'files' / title / 'shvc.dol'
+    if replacement not in new or not executable.is_file() or digest(executable) != reviewed[title]:
+        return False
+    data = executable.read_bytes()
+    return b'/%s.rom\x00' in data and b'/%s.pcm\x00' in data and b'/LZH8%s.rom\x00' not in data and b'/LZH8%s.pcm\x00' not in data
+
+
 def digest(path):
     h = hashlib.sha256()
     with path.open('rb') as stream:
@@ -62,13 +124,18 @@ def build(original, translated, output, version):
     changes = []
     blockers = []
     notes = []
+    memory_patches = []
     for name in sorted(set(old) | set(new)):
         if old.get(name) == new.get(name):
             continue
         kind = 'removed' if name not in new else ('added' if name not in old else 'replaced')
         changes.append({'path': name, 'kind': kind, 'original': old.get(name), 'translated': new.get(name)})
         if kind == 'removed':
-            blockers.append(f'File deletion requires review: {name}')
+            if reviewed_snes_removal(name, new, translated):
+                changes[-1]['kind'] = 'retained-on-original-disc'
+                notes.append(f'Retained obsolete compressed asset, unused by reviewed emulator: {name}')
+            else:
+                blockers.append(f'File deletion requires review: {name}')
     old_sys, new_sys = inventory(original / 'sys'), inventory(translated / 'sys')
     system_changes = []
     for name in sorted(set(old_sys) | set(new_sys)):
@@ -77,6 +144,13 @@ def build(original, translated, output, version):
         system_changes.append({'path': name, 'original': old_sys.get(name), 'translated': new_sys.get(name)})
         if name == 'fst.bin':
             notes.append('FST differences are handled through explicit file mappings, not a raw FST replacement.')
+        elif name == 'main.dol' and name in old_sys and name in new_sys:
+            try:
+                memory_patches = dol_memory_patches((original / 'sys/main.dol').read_bytes(),
+                                                   (translated / 'sys/main.dol').read_bytes())
+                notes.append('Main-DOL memory patches reconstruct the translated executable byte for byte; runtime testing remains pending.')
+            except ValueError as error:
+                blockers.append(str(error))
         elif name == 'boot.bin' and name in new_sys:
             after = (translated / 'sys/boot.bin').read_bytes()
             # Title and physical DOL/FST offsets are ISO metadata. Other differences need review.
@@ -95,6 +169,7 @@ def build(original, translated, output, version):
     report = {'version': version, 'disc_id': game_id, 'disc_number': boot[6], 'revision': boot[7],
               'status': 'blocked' if blockers else 'experimental-unplayed', 'files': changes,
               'system_changes': system_changes, 'blockers': blockers, 'notes': notes,
+              'memory_patches': memory_patches,
               'validation': 'File hashes checked; no emulator or console playback performed.'}
     output.mkdir(parents=True)
     (output / 'build-report.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
@@ -111,6 +186,8 @@ def build(original, translated, output, version):
     ET.SubElement(choice, 'patch', id='dq25_english')
     patch = ET.SubElement(xml, 'patch', id='dq25_english')
     for item in changes:
+        if item['kind'] == 'retained-on-original-disc':
+            continue
         name = item['path']
         destination = output / 'dq25-english/files' / name
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -119,6 +196,8 @@ def build(original, translated, output, version):
             raise ValueError(f'Replacement copy failed verification: {name}')
         ET.SubElement(patch, 'file', disc='/' + name, external='files/' + name,
                       resize='true', create='true' if item['kind'] == 'added' else 'false')
+    for item in memory_patches:
+        ET.SubElement(patch, 'memory', **{key: item[key] for key in ('offset', 'original', 'value')})
     (output / 'riivolution').mkdir()
     ET.indent(xml, space='  ')
     ET.ElementTree(xml).write(output / 'riivolution/DQCollectionEnglish.xml', encoding='utf-8', xml_declaration=True)
